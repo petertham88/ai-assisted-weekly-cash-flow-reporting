@@ -1,0 +1,21 @@
+Description,Category,Subcategory,Week,Forecast,Actual,Currency
+Customer Collections - Acme Corp,inflow,accounts_receivable,0,180000,141000,USD
+Customer Collections - Globex Ltd,inflow,accounts_receivable,0,95000,98500,USD
+Customer Collections - Initech,inflow,accounts_receivable,0,60000,61200,USD
+Rental Income - Warehouse Unit 3,inflow,other,0,12000,12000,USD
+Supplier Payment - Horizon Supplies,outflow,accounts_payable,0,64000,79500,USD
+Supplier Payment - FastFreight Co,outflow,accounts_payable,0,29000,28800,USD
+Weekly Payroll Run,outflow,payroll,0,210000,216500,USD
+Term Loan - ANZ Bank,outflow,loan_repayment,0,45000,45000,USD
+GST Quarterly Instalment,outflow,tax,0,38000,38000,USD
+Corporate Insurance Premium,outflow,other,0,15000,15000,USD
+Customer Collections - Acme Corp,inflow,accounts_receivable,1,160000,,USD
+Customer Collections - Globex Ltd,inflow,accounts_receivable,1,90000,,USD
+Supplier Payment - Horizon Supplies,outflow,accounts_payable,1,60000,,USD
+Weekly Payroll Run,outflow,payroll,1,210000,,USD
+Term Loan - ANZ Bank,outflow,loan_repayment,1,45000,,USD
+Customer Collections - Acme Corp,inflow,accounts_receivable,2,150000,,USD
+Weekly Payroll Run,outflow,payroll,2,210000,,USD
+Supplier Payment - Various,outflow,accounts_payable,2,85000,,USD
+Customer Collections - Combined,inflow,accounts_receivable,3,175000,,USD
+Weekly Payroll Run,outflow,payroll,3,210000,,USD
