@@ -1,4 +1,4 @@
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 import type {
   CashFlowItem,
   ForecastWeek,
@@ -8,23 +8,30 @@ import type {
   WeeklyReport,
 } from "@/lib/db/types";
 
-export async function listReports(): Promise<WeeklyReport[]> {
-  const supabase = createServiceClient();
-  const { data } = await supabase
+/**
+ * Reports owned by a specific user. Under app-layer auth (open RLS still active)
+ * this filter is what isolates users; once 0002 RLS is applied it is enforced at
+ * the database as well. Pass `null` to list demo/seed reports (user_id IS NULL).
+ */
+export async function listReports(userId: string | null): Promise<WeeklyReport[]> {
+  const supabase = await createClient();
+  let q = supabase
     .from("weekly_reports")
     .select("*")
     .order("report_date", { ascending: false })
     .order("created_at", { ascending: false });
+  q = userId ? q.eq("user_id", userId) : q.is("user_id", null);
+  const { data } = await q;
   return (data ?? []) as WeeklyReport[];
 }
 
-export async function getLatestReportId(): Promise<string | null> {
-  const reports = await listReports();
+export async function getLatestReportId(userId: string | null): Promise<string | null> {
+  const reports = await listReports(userId);
   return reports[0]?.id ?? null;
 }
 
 export async function getWeekZeroClosing(reportId: string): Promise<number | null> {
-  const supabase = createServiceClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("forecast_weeks")
     .select("closing_balance")
@@ -34,7 +41,7 @@ export async function getWeekZeroClosing(reportId: string): Promise<number | nul
   return (data?.closing_balance as number | undefined) ?? null;
 }
 
-/** Closing balance of the chronologically-previous report, for week-over-week comparison. */
+/** Closing balance of the chronologically-previous report (same owner), for week-over-week comparison. */
 export async function getPriorClosing(current: WeeklyReport, reports: WeeklyReport[]): Promise<number | null> {
   const prior = reports
     .filter((r) => r.id !== current.id && r.report_date < current.report_date)
@@ -44,7 +51,7 @@ export async function getPriorClosing(current: WeeklyReport, reports: WeeklyRepo
 }
 
 export async function getReportBundle(id: string): Promise<ReportBundle | null> {
-  const supabase = createServiceClient();
+  const supabase = await createClient();
   const { data: report } = await supabase.from("weekly_reports").select("*").eq("id", id).maybeSingle();
   if (!report) return null;
 

@@ -1,13 +1,17 @@
+import { redirect } from "next/navigation";
 import { listReports, getWeekZeroClosing } from "@/lib/data";
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/auth";
 import { TopNav } from "@/app/components/TopNav";
 import { ReportsList, type ReportSummary } from "@/app/components/ReportsList";
 
 export const dynamic = "force-dynamic";
 
 export default async function ReportsHistoryPage() {
-  const reports = await listReports();
-  const supabase = createServiceClient();
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  const reports = await listReports(user.id);
+  const supabase = await createClient();
 
   // Build per-report summaries (closing balance, counts) then compute WoW deltas.
   const base = await Promise.all(
@@ -38,7 +42,7 @@ export default async function ReportsHistoryPage() {
 
   return (
     <div>
-      <TopNav reports={reports} />
+      <TopNav reports={reports} userEmail={user.email} />
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Report History</h1>

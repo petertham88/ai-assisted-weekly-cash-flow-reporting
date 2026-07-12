@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getAuthedClient, actorLabel } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
-import type { RiskFlag } from "@/lib/db/types";
+import type { RiskFlag, WeeklyReport } from "@/lib/db/types";
 
 export const runtime = "nodejs";
 
@@ -10,10 +10,18 @@ const VALID_STATUS = ["unreviewed", "accepted", "dismissed", "needs_edit"];
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const supabase = createServiceClient();
+    const { supabase, user } = await getAuthedClient();
+    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     const { data: flag } = await supabase.from("risk_flags").select("*").eq("id", id).maybeSingle();
     if (!flag) return NextResponse.json({ error: "Flag not found." }, { status: 404 });
     const current = flag as RiskFlag;
+    const { data: report } = await supabase
+      .from("weekly_reports")
+      .select("user_id")
+      .eq("id", current.weekly_report_id)
+      .maybeSingle();
+    if (!report || (report as Pick<WeeklyReport, "user_id">).user_id !== user.id)
+      return NextResponse.json({ error: "You don't own this flag." }, { status: 403 });
 
     const body = await req.json();
     const status = String(body.review_status ?? "");
@@ -40,6 +48,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       action: `risk_flag.${status}`,
       target_table: "risk_flags",
       target_id: id,
+      actor_label: actorLabel(user),
+      user_id: user.id,
       detail: { severity: current.severity, note: reviewerNote },
     });
     return NextResponse.json({ ok: true });

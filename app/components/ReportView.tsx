@@ -22,11 +22,15 @@ export function ReportView({
   reports,
   priorClosing,
   aiEnabled,
+  userEmail,
+  readOnly = false,
 }: {
   bundle: ReportBundle;
   reports: WeeklyReport[];
   priorClosing: number | null;
   aiEnabled: boolean;
+  userEmail?: string | null;
+  readOnly?: boolean;
 }) {
   const { report, items, forecastWeeks, flags, output } = bundle;
   const wk0 = forecastWeeks.find((w) => w.week_offset === 0);
@@ -39,7 +43,7 @@ export function ReportView({
 
   return (
     <div>
-      <TopNav reports={reports} currentId={report.id} />
+      <TopNav reports={reports} currentId={report.id} userEmail={userEmail} demo={readOnly} />
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-6">
         {/* Header */}
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -99,16 +103,16 @@ export function ReportView({
 
         {/* Line items */}
         <section className="no-print">
-          <ItemsTable reportId={report.id} items={items} />
+          <ItemsTable reportId={report.id} items={items} readOnly={readOnly} />
         </section>
 
         {/* Risk flags + report side by side on large screens */}
         <div className="grid gap-8 lg:grid-cols-2">
           <section>
-            <RiskFlagsPanel flags={flags} />
+            <RiskFlagsPanel flags={flags} readOnly={readOnly} />
           </section>
           <section>
-            <ReportSections reportId={report.id} output={output} hasData={hasData} />
+            <ReportSections reportId={report.id} output={output} hasData={hasData} readOnly={readOnly} />
           </section>
         </div>
       </main>

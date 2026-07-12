@@ -27,7 +27,15 @@ function emptyDraft(): Draft {
   return { description: "", category: "inflow", subcategory: "other", week_offset: 0, forecast_amount: "", actual_amount: "" };
 }
 
-export function ItemsTable({ reportId, items }: { reportId: string; items: CashFlowItem[] }) {
+export function ItemsTable({
+  reportId,
+  items,
+  readOnly = false,
+}: {
+  reportId: string;
+  items: CashFlowItem[];
+  readOnly?: boolean;
+}) {
   const { call, busy, error } = useApi();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft());
@@ -93,12 +101,14 @@ export function ItemsTable({ reportId, items }: { reportId: string; items: CashF
         <h3 className="text-sm font-semibold text-neutral-700">
           Cash Flow Line Items <span className="text-neutral-400">({items.length})</span>
         </h3>
-        <button
-          onClick={() => setAdding((a) => !a)}
-          className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700"
-        >
-          {adding ? "Cancel" : "+ Add line item"}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => setAdding((a) => !a)}
+            className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700"
+          >
+            {adding ? "Cancel" : "+ Add line item"}
+          </button>
+        )}
       </div>
 
       {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
@@ -144,7 +154,7 @@ export function ItemsTable({ reportId, items }: { reportId: string; items: CashF
               <th className="px-3 py-2 text-right font-semibold">Forecast</th>
               <th className="px-3 py-2 text-right font-semibold">Actual</th>
               <th className="px-3 py-2 text-right font-semibold">Variance</th>
-              <th className="px-3 py-2 text-right font-semibold no-print">Actions</th>
+              {!readOnly && <th className="px-3 py-2 text-right font-semibold no-print">Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -196,10 +206,12 @@ export function ItemsTable({ reportId, items }: { reportId: string; items: CashF
                   <td className={`px-3 py-2 text-right tabular-nums ${it.actual_amount == null ? "text-neutral-300" : it.variance < 0 ? "text-rose-700" : it.variance > 0 ? "text-emerald-700" : "text-neutral-500"}`}>
                     {it.actual_amount == null ? "—" : signedMoney(it.variance, it.currency)}
                   </td>
-                  <td className="px-3 py-2 text-right no-print">
-                    <button onClick={() => startEdit(it)} className="mr-2 text-xs font-medium text-blue-600 hover:underline">Edit</button>
-                    <button disabled={busy} onClick={() => del(it.id)} className="text-xs font-medium text-rose-600 hover:underline disabled:opacity-50">Delete</button>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-3 py-2 text-right no-print">
+                      <button onClick={() => startEdit(it)} className="mr-2 text-xs font-medium text-blue-600 hover:underline">Edit</button>
+                      <button disabled={busy} onClick={() => del(it.id)} className="text-xs font-medium text-rose-600 hover:underline disabled:opacity-50">Delete</button>
+                    </td>
+                  )}
                 </tr>
               ),
             )}

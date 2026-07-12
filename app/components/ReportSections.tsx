@@ -21,10 +21,12 @@ export function ReportSections({
   reportId,
   output,
   hasData,
+  readOnly = false,
 }: {
   reportId: string;
   output: ReportOutput | null;
   hasData: boolean;
+  readOnly?: boolean;
 }) {
   const { call, busy, error } = useApi();
   const [editing, setEditing] = useState<SectionKey | null>(null);
@@ -60,17 +62,21 @@ export function ReportSections({
         {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
         <div className="rounded-lg border border-dashed border-neutral-300 bg-white p-8 text-center">
           <p className="text-neutral-500">
-            {hasData
-              ? "No report drafted yet. Generate the AI management narrative from the current data."
-              : "Upload cash flow data first, then generate the management report."}
+            {readOnly
+              ? "No management report has been generated for this demo report."
+              : hasData
+                ? "No report drafted yet. Generate the AI management narrative from the current data."
+                : "Upload cash flow data first, then generate the management report."}
           </p>
-          <button
-            disabled={busy || !hasData}
-            onClick={generate}
-            className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-40"
-          >
-            {busy ? "Generating…" : "Generate Report"}
-          </button>
+          {!readOnly && (
+            <button
+              disabled={busy || !hasData}
+              onClick={generate}
+              className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-40"
+            >
+              {busy ? "Generating…" : "Generate Report"}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -87,6 +93,7 @@ export function ReportSections({
             </span>
           )}
         </h3>
+        {!readOnly && (
         <div className="flex flex-wrap gap-2 no-print">
           <Link
             href={`/report/${reportId}/print`}
@@ -113,6 +120,7 @@ export function ReportSections({
             </button>
           )}
         </div>
+        )}
       </div>
 
       {error && <p className="rounded bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
@@ -141,7 +149,7 @@ export function ReportSections({
                       {conf != null && source !== "edited" && ` · ${Math.round(conf * 100)}%`}
                     </span>
                   )}
-                  {!approved && !isEditing && (
+                  {!approved && !isEditing && !readOnly && (
                     <button onClick={() => { setEditing(key); setDraft(value); }}
                       className="text-xs font-medium text-blue-600 hover:underline">
                       Edit

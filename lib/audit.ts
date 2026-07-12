@@ -12,6 +12,7 @@ export async function writeAudit(
     target_table: string;
     target_id?: string | null;
     actor_label?: string;
+    user_id?: string | null;
     detail?: Record<string, unknown>;
   },
 ) {
@@ -20,6 +21,7 @@ export async function writeAudit(
     target_table: entry.target_table,
     target_id: entry.target_id ?? null,
     actor_label: entry.actor_label ?? "Finance Executive (demo)",
+    user_id: entry.user_id ?? null,
     detail: entry.detail ?? {},
   });
   if (error) throw new Error(`audit write failed: ${error.message}`);

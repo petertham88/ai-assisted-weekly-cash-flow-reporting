@@ -21,8 +21,9 @@ export interface RecomputeResult {
 export async function recompute(
   supabase: SupabaseClient,
   report: WeeklyReport,
-  opts: { openingBalance?: number; enrichAi?: boolean } = {},
+  opts: { openingBalance?: number; enrichAi?: boolean; userId?: string | null } = {},
 ): Promise<RecomputeResult> {
+  const userId = opts.userId ?? report.user_id ?? null;
   const { data: itemRows } = await supabase
     .from("cash_flow_items")
     .select("*")
@@ -47,7 +48,7 @@ export async function recompute(
   await supabase.from("forecast_weeks").delete().eq("weekly_report_id", report.id);
   if (forecastWeeks.length) {
     await supabase.from("forecast_weeks").insert(
-      forecastWeeks.map((w) => ({ ...w, weekly_report_id: report.id })),
+      forecastWeeks.map((w) => ({ ...w, weekly_report_id: report.id, user_id: userId })),
     );
   }
 
@@ -82,6 +83,7 @@ export async function recompute(
     await supabase.from("risk_flags").insert(
       flags.map((f) => ({
         weekly_report_id: report.id,
+        user_id: userId,
         cash_flow_item_id: f.cash_flow_item_id,
         flag_type: f.flag_type,
         description: f.description,

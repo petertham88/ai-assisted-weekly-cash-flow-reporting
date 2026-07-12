@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getAuthedClient, actorLabel } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
+import type { WeeklyReport } from "@/lib/db/types";
 
 export const runtime = "nodejs";
 
@@ -12,9 +13,12 @@ export const runtime = "nodejs";
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const supabase = createServiceClient();
-    const { data: report } = await supabase.from("weekly_reports").select("status").eq("id", id).maybeSingle();
+    const { supabase, user } = await getAuthedClient();
+    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    const { data: report } = await supabase.from("weekly_reports").select("status, user_id").eq("id", id).maybeSingle();
     if (!report) return NextResponse.json({ error: "Report not found." }, { status: 404 });
+    if ((report as Pick<WeeklyReport, "user_id">).user_id !== user.id)
+      return NextResponse.json({ error: "You don't own this report." }, { status: 403 });
 
     const url = new URL(req.url);
     const force = url.searchParams.get("force") === "true";
@@ -29,6 +33,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
       action: "weekly_report.deleted",
       target_table: "weekly_reports",
       target_id: id,
+      actor_label: actorLabel(user),
+      user_id: user.id,
       detail: { status: (report as { status: string }).status },
     });
     const { error } = await supabase.from("weekly_reports").delete().eq("id", id);

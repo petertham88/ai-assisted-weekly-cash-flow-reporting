@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getAuthedClient, actorLabel } from "@/lib/auth";
 import { generateReportSections, type ReportContext } from "@/lib/ai/openai";
 import { sortFlags } from "@/lib/cashflow/risk";
 import { writeAudit } from "@/lib/audit";
@@ -12,9 +12,11 @@ export const maxDuration = 60;
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const supabase = createServiceClient();
+    const { supabase, user } = await getAuthedClient();
+    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     const { data: report } = await supabase.from("weekly_reports").select("*").eq("id", id).maybeSingle();
     if (!report) return NextResponse.json({ error: "Report not found." }, { status: 404 });
+    if ((report as WeeklyReport).user_id !== user.id) return NextResponse.json({ error: "You don't own this report." }, { status: 403 });
 
     const [{ data: fwData }, { data: flagData }, { data: existing }] = await Promise.all([
       supabase.from("forecast_weeks").select("*").eq("weekly_report_id", id).order("week_offset"),
@@ -63,6 +65,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
     const payload: Record<string, unknown> = {
       weekly_report_id: id,
+      user_id: user.id,
       executive_summary: sections.executive_summary.value,
       executive_summary_source: sections.executive_summary.source,
       executive_summary_confidence: sections.executive_summary.confidence,
@@ -98,6 +101,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       action: "report_output.generated",
       target_table: "report_outputs",
       target_id: id,
+      actor_label: actorLabel(user),
+      user_id: user.id,
       detail: { source: sections.executive_summary.source },
     });
 

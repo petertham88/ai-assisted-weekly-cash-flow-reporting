@@ -20,7 +20,7 @@ const STATUS_STYLE: Record<string, string> = {
   needs_edit: "bg-purple-100 text-purple-700",
 };
 
-export function RiskFlagsPanel({ flags }: { flags: RiskFlag[] }) {
+export function RiskFlagsPanel({ flags, readOnly = false }: { flags: RiskFlag[]; readOnly?: boolean }) {
   const { call, busy, error } = useApi();
   const [filter, setFilter] = useState<"all" | Severity>("all");
   const [noteFor, setNoteFor] = useState<string | null>(null);
@@ -125,7 +125,7 @@ export function RiskFlagsPanel({ flags }: { flags: RiskFlag[] }) {
                 </p>
               )}
 
-              {noteFor === flag.id ? (
+              {!readOnly && (noteFor === flag.id ? (
                 <div className="mt-3 space-y-2 rounded border border-amber-200 bg-amber-50 p-2 no-print">
                   <p className="text-xs font-medium text-amber-800">A reviewer note is required to dismiss a high-severity flag:</p>
                   <textarea
@@ -164,7 +164,7 @@ export function RiskFlagsPanel({ flags }: { flags: RiskFlag[] }) {
                     </button>
                   )}
                 </div>
-              )}
+              ))}
             </div>
           );
         })}

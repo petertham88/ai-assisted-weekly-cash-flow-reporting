@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getAuthedClient, actorLabel } from "@/lib/auth";
 import { recompute } from "@/lib/cashflow/orchestrate";
 import { writeAudit } from "@/lib/audit";
 import type { WeeklyReport } from "@/lib/db/types";
@@ -10,9 +10,11 @@ export const runtime = "nodejs";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const supabase = createServiceClient();
+    const { supabase, user } = await getAuthedClient();
+    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     const { data: report } = await supabase.from("weekly_reports").select("*").eq("id", id).maybeSingle();
     if (!report) return NextResponse.json({ error: "Report not found." }, { status: 404 });
+    if ((report as WeeklyReport).user_id !== user.id) return NextResponse.json({ error: "You don't own this report." }, { status: 403 });
 
     const body = await req.json();
     const description = String(body.description ?? "").trim();
@@ -20,6 +22,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const row = {
       weekly_report_id: id,
+      user_id: user.id,
       category: body.category === "outflow" ? "outflow" : "inflow",
       subcategory: body.subcategory ?? "other",
       description,
@@ -36,11 +39,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data: inserted, error } = await supabase.from("cash_flow_items").insert(row).select("id").single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    await recompute(supabase, report as WeeklyReport, { enrichAi: false });
+    await recompute(supabase, report as WeeklyReport, { enrichAi: false, userId: user.id });
     await writeAudit(supabase, {
       action: "cash_flow_item.created",
       target_table: "cash_flow_items",
       target_id: inserted?.id,
+      actor_label: actorLabel(user),
+      user_id: user.id,
       detail: { description, manual: true },
     });
     return NextResponse.json({ ok: true, id: inserted?.id });

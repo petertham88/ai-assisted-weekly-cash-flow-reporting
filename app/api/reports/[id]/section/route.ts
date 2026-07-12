@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getAuthedClient, actorLabel } from "@/lib/auth";
 import { writeAudit } from "@/lib/audit";
-import { SECTION_KEYS, type SectionKey } from "@/lib/db/types";
+import { SECTION_KEYS, type SectionKey, type WeeklyReport } from "@/lib/db/types";
 
 export const runtime = "nodejs";
 
@@ -9,6 +9,13 @@ export const runtime = "nodejs";
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
+    const { supabase, user } = await getAuthedClient();
+    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    const { data: report } = await supabase.from("weekly_reports").select("user_id").eq("id", id).maybeSingle();
+    if (!report) return NextResponse.json({ error: "Report not found." }, { status: 404 });
+    if ((report as Pick<WeeklyReport, "user_id">).user_id !== user.id)
+      return NextResponse.json({ error: "You don't own this report." }, { status: 403 });
+
     const body = await req.json();
     const section = String(body.section ?? "") as SectionKey;
     if (!SECTION_KEYS.includes(section)) {
@@ -16,7 +23,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
     const value = String(body.value ?? "");
 
-    const supabase = createServiceClient();
     const { data: output } = await supabase
       .from("report_outputs")
       .select("id, overall_review_status")
@@ -41,6 +47,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       action: "report_output.section_edited",
       target_table: "report_outputs",
       target_id: id,
+      actor_label: actorLabel(user),
+      user_id: user.id,
       detail: { section },
     });
     return NextResponse.json({ ok: true });

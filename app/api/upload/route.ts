@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { getAuthedClient, actorLabel } from "@/lib/auth";
 import { parseUploadFile } from "@/lib/cashflow/parse";
 import { recompute } from "@/lib/cashflow/orchestrate";
 import { writeAudit } from "@/lib/audit";
@@ -21,6 +21,9 @@ function mondayOf(date: Date): Date {
 
 export async function POST(req: Request) {
   try {
+    const { supabase, user } = await getAuthedClient();
+    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+
     const form = await req.formData();
     const file = form.get("file");
     if (!(file instanceof File)) {
@@ -54,8 +57,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = createServiceClient();
-
     // Create the weekly report for the current week.
     const monday = mondayOf(new Date());
     const weekLabel =
@@ -65,7 +66,7 @@ export async function POST(req: Request) {
 
     const { data: reportRow, error: reportErr } = await supabase
       .from("weekly_reports")
-      .insert({ report_date: reportDate, week_label: weekLabel, status: "draft" })
+      .insert({ report_date: reportDate, week_label: weekLabel, status: "draft", user_id: user.id })
       .select("*")
       .single();
     if (reportErr || !reportRow) {
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
     const { error: itemsErr } = await supabase.from("cash_flow_items").insert(
       parsed.items.map((it) => ({
         weekly_report_id: report.id,
+        user_id: user.id,
         category: it.category,
         subcategory: it.subcategory,
         description: it.description,
@@ -94,12 +96,14 @@ export async function POST(req: Request) {
     }
 
     // Consolidate forecast + rule-based (and AI, if enabled) risk flags.
-    await recompute(supabase, report, { openingBalance, enrichAi: true });
+    await recompute(supabase, report, { openingBalance, enrichAi: true, userId: user.id });
 
     await writeAudit(supabase, {
       action: "file.uploaded",
       target_table: "weekly_reports",
       target_id: report.id,
+      actor_label: actorLabel(user),
+      user_id: user.id,
       detail: { filename: file.name, rows: parsed.rowsSeen, items: parsed.items.length },
     });
 

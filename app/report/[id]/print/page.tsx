@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getReportBundle } from "@/lib/data";
+import { getSessionUser } from "@/lib/auth";
 import { PrintButton } from "@/app/components/PrintButton";
 import { SECTION_KEYS, SECTION_LABELS, type SectionKey } from "@/lib/db/types";
 import { money, signedMoney, formatDateTime, flagTypeLabel } from "@/lib/format";
@@ -13,8 +15,10 @@ function section(o: ReportOutput, k: SectionKey): string {
 
 export default async function PrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
   const bundle = await getReportBundle(id);
-  if (!bundle) return <div className="p-8">Report not found.</div>;
+  if (!bundle || bundle.report.user_id !== user.id) return <div className="p-8">Report not available.</div>;
 
   const { report, forecastWeeks, flags, output } = bundle;
   const activeFlags = flags.filter((f) => f.review_status !== "dismissed");
