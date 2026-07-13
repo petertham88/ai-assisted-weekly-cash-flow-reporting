@@ -70,9 +70,13 @@ export function TopNav({
               </Link>
               {userEmail && (
                 <div className="ml-2 flex items-center gap-2 border-l border-neutral-200 pl-3">
-                  <span className="hidden max-w-[160px] truncate text-xs text-neutral-500 sm:inline" title={userEmail}>
+                  <Link
+                    href="/account"
+                    className="inline max-w-[120px] truncate text-xs font-medium text-neutral-500 hover:text-neutral-900 sm:max-w-[160px]"
+                    title={`${userEmail} — account settings`}
+                  >
                     {userEmail}
-                  </span>
+                  </Link>
                   <form action="/auth/signout" method="post">
                     <button className="rounded px-2 py-1.5 text-sm font-medium text-neutral-600 hover:bg-neutral-100">
                       Sign out
